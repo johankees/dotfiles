@@ -38,7 +38,7 @@ if [ "${ZSH_BIN:-}" != "${SHELL:-}" ]; then
 	chsh -s "${ZSH_BIN}"
 fi
 
-ln -Ffs "${HOME}/.config/.zshrc" "${HOME}/.zshrc"
+ln -Ffs "${HOME}/.config/zshrc/.zshrc" "${HOME}/.zshrc"
 
 # setup wezterm terminfo
 (
