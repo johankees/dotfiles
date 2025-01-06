@@ -40,16 +40,12 @@ fi
 
 ln -Ffs "${HOME}/.config/zshrc/.zshrc" "${HOME}/.zshrc"
 
-# setup wezterm terminfo
-(
-	terminfo=$(mktemp) &&
-		curl -o "${terminfo}" https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/kitty.terminfo &&
-		tic -x -o ~/.terminfo "${terminfo}" &&
-		rm "${terminfo}"
-) 1>/dev/null 2>&1
-
 defaults write -g NSWindowShouldDragOnGesture -bool true
 defaults write -g NSAutomaticWindowAnimationsEnabled -bool false
+
+# start sketchybar
+brew services start sketchybar
+sketchybar --reload
 
 # run neofetch
 neofetch
