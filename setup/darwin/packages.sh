@@ -22,10 +22,10 @@ fi
 
 eval "$(${brew_cmd} shellenv)"
 
-HOMEBREW_BUNDLE_FILE_GLOBAL="${XDG_DATA_HOME}/homebrew/Brewfile"
+HOMEBREW_BUNDLE_FILE_GLOBAL="${XDG_DATA_HOME:-$HOME/.local/share}/homebrew/Brewfile"
 export HOMEBREW_BUNDLE_FILE_GLOBAL
 
-HOMEBREW_BUNDLE_DIR="${XDG_CONFIG_HOME}/homebrew"
+HOMEBREW_BUNDLE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/homebrew"
 
 if [ ! -r "${HOMEBREW_BUNDLE_FILE_GLOBAL}" ]; then
 	# allow user to pick an existing brewfile, or type a new name to dump current brews into

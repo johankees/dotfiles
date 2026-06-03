@@ -1,6 +1,6 @@
 #! /usr/bin/env sh
 
-set -eu
+set -eux
 
 SCRIPT_DIR=$(dirname "$(readlink -f -- "$0")")
 SETUP_DIR=$(realpath "${SCRIPT_DIR}/../")
@@ -100,5 +100,11 @@ id=${UID:-$(id -u)}
 launchctl disable gui/"${id}"/com.openssh.ssh-agent 2> /dev/null || true
 launchctl bootout gui/"${id}"/org.homebrew.ssh-agent 2> /dev/null || true
 
-# bootstrap homebrew ssh agent
-launchctl bootstrap gui/"${id}" ~/Library/LaunchAgents/org.homebrew.ssh-agent.plist
+# bootstrap homebrew ssh agent (use repo path directly — stow hasn't run yet at this stage)
+plist=$(realpath "${SETUP_DIR}/../Library/LaunchAgents/org.homebrew.ssh-agent.plist")
+
+if ! launchctl print gui/"${id}"/org.homebrew.ssh-agent > /dev/null 2>&1; then
+	launchctl bootstrap gui/"${id}" "${plist}"
+else
+	launchctl kickstart -k gui/"${id}"/org.homebrew.ssh-agent
+fi
