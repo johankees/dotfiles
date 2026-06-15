@@ -4,10 +4,21 @@
     "bufbuild/buf",
     "controlplaneio-fluxcd/tap",
     "derailed/k9s",
+    "felixkratz/formulae",
     "fluxcd/tap",
     "hashicorp/tap",
     "jandedobbeleer/oh-my-posh",
-    "oven-sh/bun"
+    "oven-sh/bun",
+    "terraform-linters/tap"
   ],
-  "trustedformulae": ["derailed/k9s/k9s"]
+  "trustedformulae": [
+    "bufbuild/buf/buf",
+    "controlplaneio-fluxcd/tap/flux-operator",
+    "derailed/k9s/k9s",
+    "fluxcd/tap/flux",
+    "hashicorp/tap/packer",
+    "hashicorp/tap/terraform",
+    "jandedobbeleer/oh-my-posh/oh-my-posh",
+    "oven-sh/bun/bun"
+  ]
 }

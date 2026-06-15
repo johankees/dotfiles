@@ -20,6 +20,7 @@ else
 	mkdir -p "${HOME}/.local/share/scripts"
 	mkdir -p "${HOME}/.local/share/wallpapers"
 	mkdir -p "${HOME}/.ssh"
+	mkdir -p "${HOME}/.terminfo"
 
 	# The stowed trees live under stow/ in the repo; each is symlinked into its
 	# own $HOME target so ~/.config, ~/.claude, etc. stay real directories that

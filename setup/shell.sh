@@ -30,8 +30,12 @@ fi
 
 # setup completions
 # shellcheck disable=SC2016
-COMPLETION_DIR=$(${ZSH_BIN} -lc 'echo "${fpath// /\n}" | grep -i completion' | head -n1)
+COMPLETION_DIR=$(${ZSH_BIN} -lc 'printf "%s\n" $fpath | grep -iE "completion|site-functions"' | head -n1)
 
 if command -v flux 1> /dev/null 2>&1; then
-	flux completion zsh > "${COMPLETION_DIR}/_flux"
+	if [ -z "${COMPLETION_DIR:-}" ]; then
+		warn "could not detect zsh completion directory; skipping flux completion"
+	elif [ ! -f "${COMPLETION_DIR}/_flux" ]; then
+		flux completion zsh > "${COMPLETION_DIR}/_flux" || warn "could not generate flux zsh completion"
+	fi
 fi
