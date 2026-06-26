@@ -9,7 +9,8 @@
     "hashicorp/tap",
     "jandedobbeleer/oh-my-posh",
     "oven-sh/bun",
-    "terraform-linters/tap"
+    "terraform-linters/tap",
+    "bitwise-media-group/tap"
   ],
   "trustedformulae": [
     "bufbuild/buf/buf",
@@ -20,5 +21,8 @@
     "hashicorp/tap/terraform",
     "jandedobbeleer/oh-my-posh/oh-my-posh",
     "oven-sh/bun/bun"
+  ],
+  "trustedcasks": [
+    "bitwise-media-group/tap/evolve"
   ]
 }

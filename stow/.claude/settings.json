@@ -244,11 +244,17 @@
     "enableWeakerNetworkIsolation": false
   },
   "feedbackSurveyRate": 0,
+  "effortLevel": "xhigh",
   "autoUpdatesChannel": "stable",
   "plansDirectory": "./.claude/plans",
   "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "tap"
+  },
   "autoMemoryEnabled": true,
+  "skipWorkflowUsageWarning": true,
   "theme": "custom:cyberdream",
   "editorMode": "vim",
-  "effortLevel": "xhigh"
+  "voiceEnabled": true
 }

@@ -1,47 +1,96 @@
 # Global agent instructions
 
-Cross-repository conventions for this machine. These apply in every repo; a project's own
-`CLAUDE.md` / `AGENTS.md` layers repo-specific rules on top.
+Cross-repo rules. Project `CLAUDE.md`/`AGENTS.md` layer on top.
+
+- Correct > pleasing. Reject unsafe. Offer safe alt.
+- Be concise. Ask only if needed.
+- No shortcuts. No workarounds. Fix root cause.
+- Code style: concise > verbose.
 
 ## Temporary files
 
-Always create temp files and dirs under `$TMPDIR`, e.g. `mktemp -d "$TMPDIR/foo.XXXXXX"`.
-A bare `mktemp` / `mktemp -d` defaults to macOS's per-user `/var/folders/.../T`, which the
-sandbox blocks (`Operation not permitted`); even bare `/tmp` resolves to `/private/tmp` outside
-the allowed `…/claude` subdir and fails the same way. The Bash tool sets `$TMPDIR` to a
-sandbox-writable directory, so routing every temp path through it is what actually works.
+Use `$TMPDIR`: `mktemp -d "$TMPDIR/foo.XXXXXX"`. Bare `/tmp` and bare `mktemp` fail in sandbox.
+
+## Development process
+
+- **Research**: Read issue/PR/docs first. If sandbox blocks, write fetch script in `$TMPDIR`; user runs it.
+- **Large updates**: Write short plan to `.cache/agent/plans/<ticket-or-topic-slug>.md`. Then start new agent.
+- **Small commits**: One concern. Clear message.
+- **Tests**: New feature: add tests if lang supports tests. Python: must. Bash: may skip. Never change existing tests without user consent.
+- **Review**: If repo has `make pr`, run it, make it pass, fix all findings. Work not done until green. If not runnable in-session, `commit.sh` runs it before any commit/PR step. If no `make pr`, warn and run best available checks, e.g. `make lint` + `make test`.
+- Loop until done. Create `commit.sh` for user to sign and push.
 
 ## Commit messages
 
-Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`
-(`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`, …). Tools like
-release-please derive the next version and changelog from these prefixes, so the format is
-load-bearing rather than cosmetic. Signal breaking changes with a `!` after the type
-(`feat!:`) or a `BREAKING CHANGE:` footer.
+Conventional Commits: `type(scope): summary`. Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`. Breaking: `feat!` or `BREAKING CHANGE:`.
 
 ## Creating commits
 
-Commit signing on this machine runs through `ssh-agent`, which Claude Code's sandbox refuses
-(it returns `EPERM` on `connect()` to the agent's `AF_UNIX` socket). Anything `git commit`ed
-from inside the sandbox is therefore unsigned. Hand the real commit off to the user with a
-`commit.sh` script they run **outside** the sandbox, where the signing key is reachable:
+Sandbox blocks `ssh-agent` signing. Use `commit.sh`.
 
-- **Outside a worktree** — don't run `git commit` at all. Write `commit.sh` at the repo root
-  containing the exact `git add` / `git commit` invocations you intended (one commit per
-  `git commit` call, real Conventional-Commit messages, trailers, etc.), then tell the user to
-  run it.
-- **Inside a worktree** — commit normally at sensible stopping points; those land unsigned on
-  the `agent/<name>` branch. Still write `commit.sh` at the worktree root, but its job is to
-  re-sign: invoke `git resign <base>` over the range you authored this session. Pick `<base>`
-  as the parent of your first commit (e.g. `HEAD~3` for three commits, or
-  `$(git merge-base HEAD <parent-branch>)` when the count is dynamic).
+- **Outside worktree**: Do not run `git commit`. Write repo-root `commit.sh` with exact `git add` and `git commit`. Include `Closes: #<number>`. User runs it.
+- **Inside worktree**: Commit unsigned. Write `commit.sh` with `git resign <base>`. Base = parent of first commit, or `$(git merge-base HEAD <parent-branch>)`. Include issue trailer if missing.
 
 Both variants:
 
-- Do not add to the repository `.gitignore`. It is in the global `~/.config/git/ignore`.
-- Start with `#!/usr/bin/env sh` + `set -eu` and overwrite any prior `commit.sh` — the file
-  is the _current_ batch, not history.
-- Are `chmod +x`'d when written so the user can run them as `./commit.sh`.
-- End with `rm -- "$0"` so the script removes itself after a successful run. Under `set -eu`
-  a failed `git commit` (or `git resign`) aborts before the `rm`, leaving the script in place
-  to fix and rerun.
+- Start: `#!/usr/bin/env sh` + `set -eu`
+- Overwrite old `commit.sh`
+- `chmod +x`
+- If repo has `make pr` and it did not already pass in-session, `commit.sh` runs it before any `git add`, `git commit`, `git resign`, `git push`, or PR step. Stop on fail.
+- If repo has no `make pr`, `commit.sh` prints warning.
+- `commit.sh` must push and then create/update PR:
+  - **Non-fork**: `gh pr create --base <base> --title "..." --body "..."`. Omit `-R` and `--head`.
+  - **Fork**: `gh pr create -R <upstream-owner/repo> --head <fork-owner:branch> --base <base> --title "..." --body "..."`
+- End: `rm -- "$0"`
+- Do not modify repo `.gitignore`
+
+### commit.sh skeleton
+
+```sh
+#!/usr/bin/env sh
+set -eu
+
+if make -n pr >/dev/null 2>&1; then
+  make pr
+else
+  echo "warning: no 'make pr' target; skipped" >&2
+fi
+
+git add <files>
+git commit -m "<type(scope): summary>
+
+<optional body>
+
+Closes: #<issue>"
+
+git resign "$(git merge-base HEAD <parent-branch>)"
+
+git push origin <branch>
+
+gh pr create \
+  --base main \
+  --title "<type(scope): summary>" \
+  --body "<pr body>
+
+Closes #<issue>"
+
+rm -- "$0"
+```
+
+## Third-party tools and dependencies
+
+- **Stdlib**: Prefer unless third-party is justified and maintained.
+- **Private registry**: Use <https://repo.ihsmarkit.com>, not public sources.
+- **Local tools**: Install in `.bin`, never global.
+
+## Validation
+
+- **make**: Use `make help` to find checks. Fix failures. Do not weaken Makefile to pass.
+
+## Worktrees
+
+- **Per update**: One fresh worktree per PR-sized change. Never reuse.
+- **Fresh start**: New worktree + new branch each update.
+- **Location**: `~/.cache/agents/worktrees`
+- **Naming**: `<repo>-<ticket-or-topic-slug>` worktree, `agent/<ticket-or-topic-slug>` branch.
+- **Base**: Fetch `upstream`. Branch from current `upstream/main`.

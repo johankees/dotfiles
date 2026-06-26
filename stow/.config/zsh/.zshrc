@@ -121,3 +121,6 @@ if [ -n "${ZSHPROFILE:-}" ]; then
 	zprof
 	printf '\n\nTIMINGS:\n\n'
 fi
+
+PATH=$PATH:${HOME}/.local/bin
+export PATH
