@@ -16,31 +16,45 @@ Use `$TMPDIR`: `mktemp -d "$TMPDIR/foo.XXXXXX"`. Bare `/tmp` and bare `mktemp` f
 - **Research**: Read issue/PR/docs first. If sandbox blocks, write fetch script in `$TMPDIR`; user runs it.
 - **Large updates**: Write short plan to `.cache/agent/plans/<ticket-or-topic-slug>.md`. Then start new agent.
 - **Small commits**: One concern. Clear message.
-- **Tests**: New feature: add tests if lang supports tests. Python: must. Bash: may skip. Never change existing tests without user consent.
-- **Review**: If repo has `make pr`, run it, make it pass, fix all findings. Work not done until green. If not runnable in-session, `commit.sh` runs it before any commit/PR step. If no `make pr`, warn and run best available checks, e.g. `make lint` + `make test`.
+- **Tests**: New feature: add tests if lang supports tests. Python: must. Bash: may skip. Never change existing tests
+  without user consent.
+- **Review**: If repo has `make pr`, run it, make it pass, fix all findings. Work not done until green. If not runnable
+  in-session, `commit.sh` runs it before any commit/PR step. If no `make pr`, warn and run best available checks, e.g.
+  `make lint` + `make test`.
+- **Branch/PR flow**: Use `git town hack` to start work and `git town propose` to open/update PRs.
 - Loop until done. Create `commit.sh` for user to sign and push.
 
 ## Commit messages
 
-Conventional Commits: `type(scope): summary`. Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`. Breaking: `feat!` or `BREAKING CHANGE:`.
+Conventional Commits: `type(scope): summary`. Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`. Breaking:
+`feat!` or `BREAKING CHANGE:`.
 
 ## Creating commits
 
 Sandbox blocks `ssh-agent` signing. Use `commit.sh`.
 
-- **Outside worktree**: Do not run `git commit`. Write repo-root `commit.sh` with exact `git add` and `git commit`. Include `Closes: #<number>`. User runs it.
-- **Inside worktree**: Commit unsigned. Write `commit.sh` with `git resign <base>`. Base = parent of first commit, or `$(git merge-base HEAD <parent-branch>)`. Include issue trailer if missing.
+For Git Town on GitHub forks:
+
+- Set `gh` default repo to `upstream`: `gh repo set-default <upstream-owner/repo>`.
+- Keep `git-town.forge-type=github` and `git-town.github-connector=gh`.
+- `origin` remains the fork push remote; `git town propose` must target `upstream`.
+
+- **Outside worktree**: Do not run `git commit`. Write repo-root `commit.sh` with exact `git add` and `git commit`.
+  Include `Closes: #<number>`. User runs it.
+- **Inside worktree**: Commit unsigned. Write `commit.sh` with `git resign <base>`. Base = parent of first commit, or
+  `$(git merge-base HEAD <parent-branch>)`. Include issue trailer if missing.
 
 Both variants:
 
 - Start: `#!/usr/bin/env sh` + `set -eu`
 - Overwrite old `commit.sh`
 - `chmod +x`
-- If repo has `make pr` and it did not already pass in-session, `commit.sh` runs it before any `git add`, `git commit`, `git resign`, `git push`, or PR step. Stop on fail.
+- `commit.sh` must create the tracking issue on `upstream`, not on `origin`. Derive the upstream repo from `git remote
+  get-url upstream` and pass it to `gh issue create --repo <upstream-owner/repo>`.
+- If repo has `make pr` and it did not already pass in-session, `commit.sh` runs it before any `git add`, `git commit`,
+  `git resign`, `git push`, or PR step. Stop on fail.
 - If repo has no `make pr`, `commit.sh` prints warning.
-- `commit.sh` must push and then create/update PR:
-  - **Non-fork**: `gh pr create --base <base> --title "..." --body "..."`. Omit `-R` and `--head`.
-  - **Fork**: `gh pr create -R <upstream-owner/repo> --head <fork-owner:branch> --base <base> --title "..." --body "..."`
+- `commit.sh` must push the branch. Open or update the PR with `git town propose`.
 - End: `rm -- "$0"`
 - Do not modify repo `.gitignore`
 
@@ -56,6 +70,14 @@ else
   echo "warning: no 'make pr' target; skipped" >&2
 fi
 
+upstream_url="$(git remote get-url upstream)"
+upstream_repo="${upstream_url#https://github.com/}"
+upstream_repo="${upstream_repo#git@github.com:}"
+upstream_repo="${upstream_repo%.git}"
+
+issue_url="$(gh issue create --repo "$upstream_repo" --title "<issue title>" --body "<issue body>")"
+issue_number="${issue_url##*/}"
+
 git add <files>
 git commit -m "<type(scope): summary>
 
@@ -63,16 +85,9 @@ git commit -m "<type(scope): summary>
 
 Closes: #<issue>"
 
-git resign "$(git merge-base HEAD <parent-branch>)"
-
 git push origin <branch>
 
-gh pr create \
-  --base main \
-  --title "<type(scope): summary>" \
-  --body "<pr body>
-
-Closes #<issue>"
+git town propose
 
 rm -- "$0"
 ```
