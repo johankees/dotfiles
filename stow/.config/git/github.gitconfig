@@ -10,5 +10,6 @@
 	defaultKeyCommand = "ssh-sk get --git"
 
 [git-town]
-	github-connector = gh
+	github-connector = api
     forge-type = github
+    github-token = "$(gh auth token)"
