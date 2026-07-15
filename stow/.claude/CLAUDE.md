@@ -6,6 +6,7 @@ Cross-repo rules. Project `CLAUDE.md`/`AGENTS.md` layer on top.
 - Be concise. Ask only if needed.
 - No shortcuts. No workarounds. Fix root cause.
 - Code style: concise > verbose.
+- **Tool calls**: Every call needs approval. Batch independent calls. Never serial when parallel works. Fewer calls = faster.
 
 ## Temporary files
 
@@ -21,7 +22,8 @@ Use `$TMPDIR`: `mktemp -d "$TMPDIR/foo.XXXXXX"`. Bare `/tmp` and bare `mktemp` f
 - **Review**: If repo has `make pr`, run it, make it pass, fix all findings. Work not done until green. If not runnable
   in-session, `commit.sh` runs it before any commit/PR step. If no `make pr`, warn and run best available checks, e.g.
   `make lint` + `make test`.
-- **Branch/PR flow**: Use `git town hack` to start work and `git town propose` to open/update PRs.
+- **Branch/PR flow**: Start work with plain `git`: `git fetch upstream && git switch -c agent/<slug> upstream/main`.
+  Open/update PRs with `gh pr create` / `gh pr edit`.
 - Loop until done. Create `commit.sh` for user to sign and push.
 
 ## Commit messages
@@ -29,15 +31,19 @@ Use `$TMPDIR`: `mktemp -d "$TMPDIR/foo.XXXXXX"`. Bare `/tmp` and bare `mktemp` f
 Conventional Commits: `type(scope): summary`. Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `ci`. Breaking:
 `feat!` or `BREAKING CHANGE:`.
 
+Commit footers must identify the model that materially authored the change. Use a git trailer such as
+`Assisted-by: Claude Opus 4.5` (substituting the actual model name and version in use). Do
+not hard-code a specific model name — derive it from the model currently in use.
+
 ## Creating commits
 
 Sandbox blocks `ssh-agent` signing. Use `commit.sh`.
 
-For Git Town on GitHub forks:
+For GitHub forks:
 
 - Set `gh` default repo to `upstream`: `gh repo set-default <upstream-owner/repo>`.
-- Keep `git-town.forge-type=github` and `git-town.github-connector=gh`.
-- `origin` remains the fork push remote; `git town propose` must target `upstream`.
+- `origin` remains the fork push remote; open PRs against `upstream` with `gh pr create --repo <upstream-owner/repo>
+  --head <fork-owner>:<branch> --base main`.
 
 - **Outside worktree**: Do not run `git commit`. Write repo-root `commit.sh` with exact `git add` and `git commit`.
   Include `Closes: #<number>`. User runs it.
@@ -54,7 +60,8 @@ Both variants:
 - If repo has `make pr` and it did not already pass in-session, `commit.sh` runs it before any `git add`, `git commit`,
   `git resign`, `git push`, or PR step. Stop on fail.
 - If repo has no `make pr`, `commit.sh` prints warning.
-- `commit.sh` must push the branch. Open or update the PR with `git town propose`.
+- `commit.sh` must push the branch, then open the PR with `gh pr create` (against `upstream` for forks) or update it
+  with `gh pr edit` if one already exists for the branch.
 - End: `rm -- "$0"`
 - Do not modify repo `.gitignore`
 
@@ -77,17 +84,30 @@ upstream_repo="${upstream_repo%.git}"
 
 issue_url="$(gh issue create --repo "$upstream_repo" --title "<issue title>" --body "<issue body>")"
 issue_number="${issue_url##*/}"
+assisted_by="${ASSISTED_BY:-<model name and version, e.g. Claude Opus 4.5>}"
 
 git add <files>
 git commit -m "<type(scope): summary>
 
 <optional body>
 
-Closes: #<issue>"
+Closes: #$issue_number
+Assisted-by: $assisted_by"
 
-git push origin <branch>
+branch="<branch>"
+git push origin "$branch"
 
-git town propose
+origin_url="$(git remote get-url origin)"
+origin_repo="${origin_url#https://github.com/}"
+origin_repo="${origin_repo#git@github.com:}"
+origin_repo="${origin_repo%.git}"
+origin_owner="${origin_repo%%/*}"
+
+if gh pr view --repo "$upstream_repo" "$branch" >/dev/null 2>&1; then
+  gh pr edit --repo "$upstream_repo" "$branch"
+else
+  gh pr create --repo "$upstream_repo" --head "$origin_owner:$branch" --base main --fill
+fi
 
 rm -- "$0"
 ```

@@ -103,3 +103,5 @@ brew "pnpm"
 brew "zizmor"
 brew "markdownlint-cli2"
 brew "markdownlint-cli"
+# Polyglot runtime manager (asdf rust clone)
+brew "mise"
